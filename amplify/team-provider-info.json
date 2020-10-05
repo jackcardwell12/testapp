@@ -13,7 +13,9 @@
     },
     "categories": {
       "auth": {
-        "testapp3a61d622": {}
+        "testapp3a61d622": {
+          "hostedUIProviderCreds": "[]"
+        }
       }
     }
   }
