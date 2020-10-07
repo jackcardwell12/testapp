@@ -1,89 +1,79 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import { API, Storage } from 'aws-amplify';
+import { API } from 'aws-amplify';
 import { withAuthenticator, AmplifySignOut } from '@aws-amplify/ui-react';
-import { listNotes } from './graphql/queries';
-import { createNote as createNoteMutation, deleteNote as deleteNoteMutation } from './graphql/mutations';
-
-const initialFormState = { name: '', description: '' }
-
+import { listProjects } from './graphql/queries';
+import { createProject as createProjectMutation ,deleteProject as deleteProjectMutation , createTask as createTaskMutation ,deleteTask as deleteTaskMutation , } from './graphql/mutations';
+import TaskPanel from './components/taskPanel';
+const initialFormState = { name: ''}
+const initialTaskFormState = { name: '', description: '', projectID: ''}
 function App() {
-  const [notes, setNotes] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [formData, setFormData] = useState(initialFormState);
+  const [taskFormData, setTaskFormData] = useState(initialTaskFormState);
 
   useEffect(() => {
-    fetchNotes();
+    fetchProjects();
   }, []);
 
-  async function onChange(e) {
-    if (!e.target.files[0]) return
-    const file = e.target.files[0];
-    setFormData({ ...formData, image: file.name });
-    await Storage.put(file.name, file);
-    fetchNotes();
+  async function fetchProjects() {
+    const apiData = await API.graphql({ query: listProjects });
+    console.log(apiData);
+    setProjects(apiData.data.listProjects.items);
   }
-
-  async function fetchNotes() {
-  const apiData = await API.graphql({ query: listNotes });
-  const notesFromAPI = apiData.data.listNotes.items;
-  await Promise.all(notesFromAPI.map(async note => {
-    if (note.image) {
-      const image = await Storage.get(note.image);
-      note.image = image;
-    }
-    return note;
-  }))
-  setNotes(apiData.data.listNotes.items);
-}
-
-  async function createNote() {
-    if (!formData.name || !formData.description) return;
-    await API.graphql({ query: createNoteMutation, variables: { input: formData } });
-    if (formData.image) {
-      const image = await Storage.get(formData.image);
-      formData.image = image;
-    }
-    setNotes([ ...notes, formData ]);
+  
+  async function createProject() {
+    if (!formData.name) return;
+    await API.graphql({ query: createProjectMutation, variables: { input: formData } });
+    fetchProjects();
     setFormData(initialFormState);
   }
-
-  async function deleteNote({ id }) {
-    const newNotesArray = notes.filter(note => note.id !== id);
-    setNotes(newNotesArray);
-    await API.graphql({ query: deleteNoteMutation, variables: { input: { id } }});
+  async function createTask() {
+    if (!taskFormData.name) return;
+    await API.graphql({ query: createTaskMutation, variables: { input: taskFormData } });
+    fetchProjects();
+    setFormData(initialTaskFormState);
   }
+
 
   return (
     <div className="App">
-      <h1>My Notes App</h1>
+      <h1>My Projects App</h1>
       <input
         onChange={e => setFormData({ ...formData, 'name': e.target.value})}
-        placeholder="Note name"
+        placeholder="Project name"
         value={formData.name}
       />
-      <input
-        type="file"
-        onChange={onChange}
-      />
-      <input
-        onChange={e => setFormData({ ...formData, 'description': e.target.value})}
-        placeholder="Note description"
-        value={formData.description}
-      />
-      <button onClick={createNote}>Create Note</button>
+      <button onClick={createProject}>Create Project</button>
       <div style={{marginBottom: 30}}>
-      {
-        notes.map(note => (
-          <div key={note.id || note.name}>
-            <h2>{note.name}</h2>
-            <p>{note.description}</p>
-            <button onClick={() => deleteNote(note)}>Delete note</button>
-            {
-              note.image && <img src={note.image} style={{width: 400}} />
-            }
-          </div>
-        ))
-      }
+        {
+          projects.map((project,i) => (
+            <div key={project.id || project.name}>
+              <h2>{project.name}</h2>
+              <p>{project.description}</p>
+              {project.tasks.items.map(task => (
+                <div>
+                  <TaskPanel key = {i} task = {task}/>
+                </div>
+              ))}
+              <div> 
+                {taskFormData['projectID'] = console.log(project.id)}
+                <input
+                  onChange={e => setTaskFormData({ ...taskFormData, 'name': e.target.value})}
+                  placeholder="Task Name"
+                  value={taskFormData.name}
+                  />
+                <input
+                  onChange={e => setTaskFormData({ ...taskFormData, 'description': e.target.value})}
+                  placeholder="Task Description"
+                  value={taskFormData.description}
+                />
+                  <button onClick={createTask}>Create Task</button>
+              </div>
+            </div>
+
+          ))
+        }
       </div>
       <AmplifySignOut />
     </div>

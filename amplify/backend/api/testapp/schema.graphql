@@ -1,6 +1,19 @@
-type Note @model {
+type Note @model{
   id: ID!
   name: String!
   description: String
   image: String
+}
+type Project @model{
+  id: ID!
+  name: String!
+  tasks: [Task] @connection(name: "ProjectTasks", sortField: "createdAt")
+}
+
+type Task @model{
+  id: ID!
+  name: String!
+  description: String
+  createdAt: String
+  person: Project @connection(name: "ProjectTasks", sortField: "createdAt")
 }
